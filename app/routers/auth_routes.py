@@ -21,7 +21,7 @@ async def criar_conta(usuarioSchema: UsuarioSchema, session: Session = Depends(p
             detail="Email do usuario ja cadastrado")
    else:
         hashed_password = pwd_context.hash(usuarioSchema.senha)
-        novo_usuario = Usuario(email = usuarioSchema.email, senha=hashed_password, nome= usuarioSchema.nome)
+        novo_usuario = Usuario(email=usuarioSchema.email, senha=hashed_password, nome= usuarioSchema.nome)
         session.add(novo_usuario)
         session.commit()
         session.refresh(novo_usuario)

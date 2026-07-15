@@ -24,5 +24,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 from app.routers.auth_routes import auth_router
+from app.routers.transacao_routes import transacao_router
 
 app.include_router(auth_router)
+app.include_router(transacao_router)
