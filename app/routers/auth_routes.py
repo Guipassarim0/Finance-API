@@ -5,8 +5,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.models import Usuario
 from app.schemas import  UsuarioSchema, Token
-from app.dependencies import pegar_sessao, get_current_user
-from datetime import datetime, timedelta, timezone
+from app.dependencies import pegar_sessao
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from jwt import encode
 

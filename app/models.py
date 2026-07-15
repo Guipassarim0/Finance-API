@@ -22,9 +22,10 @@ class TipoTransacao(str, Enum):
     RECEITA = 'RECEITA'
     DESPESA = 'DESPESA'
 
+#Decidi usar uma classe Enum em vez de duas pois facilita a validação
 class Categoria(str, Enum):
     
-    #despesas
+    #Despesas
     MERCADO = 'MERCADO'
     ALIMENTACAO = 'ALIMENTACAO'
     TRANSPORTE = 'TRANSPORTE'
@@ -35,7 +36,7 @@ class Categoria(str, Enum):
     CONTAS = 'CONTAS'
     PARCELAS = 'PARCELAS'
     
-    #receitas
+    #Receitas
     SALARIO = 'SALARIO'
     FREELANCE = 'FREELANCE'
     REEMBOLSO = 'REEMBOLSO'
@@ -43,7 +44,7 @@ class Categoria(str, Enum):
     VENDA = 'VENDA'
     BONUS = 'BONUS'
     
-    #ambos os tipos
+    #Ambos os tipos
     PRESENTE = 'PRESENTE'
     OUTROS = 'OUTROS'
 
