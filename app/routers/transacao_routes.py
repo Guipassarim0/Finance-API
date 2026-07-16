@@ -3,6 +3,8 @@ from app.models import Usuario, Transacao
 from app.schemas import TransacaoSchema    
 from app.dependencies import pegar_sessao, get_current_user
 from sqlalchemy.orm import Session
+from sqlalchemy import func
+from datetime import datetime
 
 
 transacao_router = APIRouter(prefix="/transacao", tags=["CRUD Transações"])
@@ -83,5 +85,35 @@ async def deletar_transação(id: int, current_user: Usuario = Depends(get_curre
         "mensagem": f"Transação com id {dados_retorno['id']} deletada com sucesso",
         "transacao": dados_retorno
     }
+
+#Rota de listagem de resumo mensal dos tipos
+@transacao_router.get('/resumo_tipos_mensal')
+async def resumo_mensal(mes : int, ano: int, current_user: Usuario = Depends(get_current_user), session: Session = Depends(pegar_sessao)):
+
+    hoje = datetime.now()
+    ano_busca = ano or hoje.year
+    mes_busca = mes or hoje.month
+
+    resumos_tipos = session.query(Transacao.tipo, 
+                                  func.sum(Transacao.valor).label('total')).filter(Transacao.usuario_id == current_user.id, 
+                                                                                   func.extract('year', Transacao.data) == ano_busca, 
+                                                                                   func.extract('month', Transacao.data) == mes_busca).group_by(Transacao.tipo).all()
+    
+    resumo = {
+        "RECEITA": 0.0,
+        "DESPESA": 0.0,
+        "saldo": 0.0,
+        "mes": mes_busca,
+        "ano": ano_busca
+    } 
+
+    for tipo, total in resumos_tipos:
+
+        resumo[tipo.value] = round(total, 2)
+
+    resumo["saldo"] = round(resumo["RECEITA"] - resumo["DESPESA"], 2)
+
+    return resumo
+        
 
            
