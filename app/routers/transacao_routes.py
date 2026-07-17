@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.models import Usuario, Transacao  
-from app.schemas import TransacaoSchema    
+from app.models import Usuario, Transacao, Categoria, TipoTransacao  
+from app.schemas import TransacaoSchema, FiltroRelatorioSchema    
 from app.dependencies import pegar_sessao, get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -86,9 +86,9 @@ async def deletar_transação(id: int, current_user: Usuario = Depends(get_curre
         "transacao": dados_retorno
     }
 
-#Rota de listagem de resumo mensal dos tipos
+#Rota de listagem de resumo mensal dos tipos(receita, despesas)
 @transacao_router.get('/resumo_tipos_mensal')
-async def resumo_mensal(mes : int, ano: int, current_user: Usuario = Depends(get_current_user), session: Session = Depends(pegar_sessao)):
+async def resumo_tipos_mensal(mes : int, ano: int, current_user: Usuario = Depends(get_current_user), session: Session = Depends(pegar_sessao)):
 
     hoje = datetime.now()
     ano_busca = ano or hoje.year
@@ -98,6 +98,9 @@ async def resumo_mensal(mes : int, ano: int, current_user: Usuario = Depends(get
                                   func.sum(Transacao.valor).label('total')).filter(Transacao.usuario_id == current_user.id, 
                                                                                    func.extract('year', Transacao.data) == ano_busca, 
                                                                                    func.extract('month', Transacao.data) == mes_busca).group_by(Transacao.tipo).all()
+    
+    #func.sum() soma todos os valores do banco de dados, func.extract filtra apenas a data digitada e o .group_by separa os tipos em duas pastas (receitas e despesas) para separas os valores
+    #usei year e month pois o postegres so entende assim, não entende (ano, mes)
     
     resumo = {
         "RECEITA": 0.0,
@@ -109,11 +112,52 @@ async def resumo_mensal(mes : int, ano: int, current_user: Usuario = Depends(get
 
     for tipo, total in resumos_tipos:
 
-        resumo[tipo.value] = round(total, 2)
+        '''
+        esse for percorre os resultados do banco onde ele devolve ja ordenado ex(transação.receita == 1500), e abaixo ocorrem as somas de saldo e dos tipos 
+        com o round para limitar o resultado em 2 casas decimais
 
+        '''
+
+        resumo[tipo.value] = round(total, 2)
+    
     resumo["saldo"] = round(resumo["RECEITA"] - resumo["DESPESA"], 2)
 
     return resumo
+
+@transacao_router.get('/resumo_categorias_mensal')
+async def resumo_categorias_mensal(mes : int, ano : int, filtros: FiltroRelatorioSchema = Depends(), current_user: Usuario = Depends(get_current_user), session: Session = Depends(pegar_sessao)):
+
+    hoje = datetime.now()
+    ano_busca = ano or hoje.year
+    mes_busca = mes or hoje.month
+
+    '''
+    -validação da data mesmaque a rota de cima o usuario escolhe a data a ser consultada
+    -o filtro server para nao deixar que o usuario coloque algo incoerente como (mercado) no tipo de (receita)
+    -nao uso o .group_by nessa rota pois o filtro ja separa os tipos e retorna a soma do mes inteiro da categoria desejada
+    -o depends() vazio do filtro diz para o fastapi para que ele pegue todos os parametros passados na url
+    -o scalar() faz com que o resultado deixe de ser uma lista do banco e devolve o resultado como um numero puro para o pyhton sendo em decimal ou float
+
+    '''
+
+    resumo_categorias = session.query(func.sum(Transacao.valor)).filter(Transacao.usuario_id == current_user.id,
+                                                                        Transacao.tipo == filtros.tipo, 
+                                                                        Transacao.categoria == filtros.categoria,
+                                                                        func.extract('year', Transacao.data) == ano_busca, 
+                                                                        func.extract('month', Transacao.data) == mes_busca).scalar()
+    
+     #usei year e month pois o postegres so entende assim, não entende (ano, mes)
+    
+    return {
+        "categoria": filtros.categoria.value,
+        "mes" : mes_busca,
+        "ano" : ano_busca,
+        "total" : round(resumo_categorias, 2) if resumo_categorias is not None else 0.0
+
+    }
+
+
+
         
 
            

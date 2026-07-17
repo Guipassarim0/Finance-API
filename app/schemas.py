@@ -71,3 +71,7 @@ class TransacaoSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+class FiltroRelatorioSchema(TransacaoSchema):
+
+    valor: Decimal | None = None
