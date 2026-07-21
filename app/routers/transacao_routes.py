@@ -4,7 +4,7 @@ from app.schemas import TransacaoSchema, FiltroRelatorioSchema
 from app.dependencies import pegar_sessao, get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 transacao_router = APIRouter(prefix="/transacao", tags=["CRUD Transações"])
@@ -12,13 +12,39 @@ transacao_router = APIRouter(prefix="/transacao", tags=["CRUD Transações"])
 #Rota de criar transação (receita, despesa), do usuario logado
 @transacao_router.post('/criar_transacao')
 async def criar_transacao(dados_transacao: TransacaoSchema, current_user: Usuario = Depends(get_current_user),  session: Session = Depends(pegar_sessao)):
+
+    agora = datetime.now()
+    data_envio = dados_transacao.data or agora
+
+    '''
+    foi usado o (tzinfo=None) para tratar o conflito de fuso horarios gerado pelo datetime.now(), 
+    pois ao comparar um objeto de data aware com um naive o python gera um erro fatal, e o .replace(tzinfo=None)
+    faz com que ambas as datas fiquem na mesma "prateleira" para a comparação
+    '''
+    data_comparacao = data_envio.replace(tzinfo=None)
+
+    limite_passado = agora - timedelta(days=30)
+    limite_futuro = datetime(agora.year, 12, 31, 23, 59, 59) 
+
     
+    if data_comparacao < limite_passado:
+        raise HTTPException(
+            status_code=400,
+            detail="Não é permitido registrar transações com mais de 7 dias de atraso."
+        )
+    
+    if data_comparacao > limite_futuro:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Não é permitido agendar transações além do final do ano atual ({agora.year})."
+        )
+
     nova_transacao = Transacao(
         tipo=dados_transacao.tipo,
         categoria=dados_transacao.categoria,
         valor=dados_transacao.valor,
         descricao=dados_transacao.descricao,
-        data=dados_transacao.data, 
+        data=data_envio, 
         usuario_id=current_user.id  
         )
 
@@ -58,7 +84,7 @@ async def listar_transacoes(current_user: Usuario = Depends(get_current_user),  
     ]   
 
 #Rota de deletar transações do usuario logado
-@transacao_router.delete('/deletar_transação')
+@transacao_router.delete('/deletar_transacao')
 async def deletar_transação(id: int, current_user: Usuario = Depends(get_current_user), session: Session = Depends(pegar_sessao)):
 
     transacao_deletada = session.query(Transacao).filter(Transacao.usuario_id==current_user.id, Transacao.id==id).first()
@@ -88,11 +114,23 @@ async def deletar_transação(id: int, current_user: Usuario = Depends(get_curre
 
 #Rota de listagem de resumo mensal dos tipos(receita, despesas)
 @transacao_router.get('/resumo_tipos_mensal')
-async def resumo_tipos_mensal(mes : int, ano: int, current_user: Usuario = Depends(get_current_user), session: Session = Depends(pegar_sessao)):
+async def resumo_tipos_mensal(mes : int | None = None, ano: int | None = None, current_user: Usuario = Depends(get_current_user), session: Session = Depends(pegar_sessao)):
 
     hoje = datetime.now()
-    ano_busca = ano or hoje.year
-    mes_busca = mes or hoje.month
+    ano_busca = hoje.year if ano is None else ano
+    mes_busca = hoje.month if mes is None else mes
+
+    if mes_busca > 12 or mes_busca <= 0:
+        raise HTTPException(
+            status_code=400, 
+            detail= "O mês deve ser um número entre 1 e 12."
+        )
+    
+    if ano_busca > hoje.year or ano_busca < hoje.year -1:
+        raise HTTPException(
+            status_code=400, 
+            detail= "Busca permitida apenas para o ano atual ou o ano anterior."
+        )
 
     resumos_tipos = session.query(Transacao.tipo, 
                                   func.sum(Transacao.valor).label('total')).filter(Transacao.usuario_id == current_user.id, 
@@ -101,7 +139,7 @@ async def resumo_tipos_mensal(mes : int, ano: int, current_user: Usuario = Depen
     
     #func.sum() soma todos os valores do banco de dados, func.extract filtra apenas a data digitada e o .group_by separa os tipos em duas pastas (receitas e despesas) para separas os valores
     #usei year e month pois o postegres so entende assim, não entende (ano, mes)
-    
+
     resumo = {
         "RECEITA": 0.0,
         "DESPESA": 0.0,
@@ -125,11 +163,26 @@ async def resumo_tipos_mensal(mes : int, ano: int, current_user: Usuario = Depen
     return resumo
 
 @transacao_router.get('/resumo_categorias_mensal')
-async def resumo_categorias_mensal(mes : int, ano : int, filtros: FiltroRelatorioSchema = Depends(), current_user: Usuario = Depends(get_current_user), session: Session = Depends(pegar_sessao)):
+async def resumo_categorias_mensal(mes : int | None = None, ano : int | None = None, filtros: FiltroRelatorioSchema = Depends(), current_user: Usuario = Depends(get_current_user), session: Session = Depends(pegar_sessao)):
 
     hoje = datetime.now()
-    ano_busca = ano or hoje.year
-    mes_busca = mes or hoje.month
+    ano_busca = hoje.year if ano is None else ano
+    mes_busca = hoje.month if mes is None else mes
+
+    if mes_busca > 12 or mes_busca <= 0:
+        raise HTTPException(
+            status_code=400, 
+            detail= "O mês deve ser um número entre 1 e 12."
+        )
+    '''
+    validações de ano e mes não permite que o mes seja menor ou igual a 0, 
+    e que o ano seja maior que o atual ou menor que o ano passado
+    '''
+    if ano_busca > hoje.year or ano_busca < hoje.year -1:
+        raise HTTPException(
+            status_code=400, 
+            detail= "Busca permitida apenas para o ano atual ou o ano anterior."
+        )
 
     '''
     -validação da data mesmaque a rota de cima o usuario escolhe a data a ser consultada
@@ -146,8 +199,8 @@ async def resumo_categorias_mensal(mes : int, ano : int, filtros: FiltroRelatori
                                                                         func.extract('year', Transacao.data) == ano_busca, 
                                                                         func.extract('month', Transacao.data) == mes_busca).scalar()
     
-     #usei year e month pois o postegres so entende assim, não entende (ano, mes)
-    
+    #usei year e month pois o postegres so entende assim, não entende (ano, mes)
+     
     return {
         "categoria": filtros.categoria.value,
         "mes" : mes_busca,
