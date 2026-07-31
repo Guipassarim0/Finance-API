@@ -16,6 +16,7 @@ class Usuario(Base):
     senha = Column(String, nullable=False)
 
     transacoes = relationship("Transacao", back_populates="usuario", cascade="all, delete-orphan")
+    investimentos = relationship("PosicaoInvestimento", back_populates="usuario")
 
 
 class TipoTransacao(str, Enum):
@@ -40,11 +41,10 @@ class Categoria(str, Enum):
     SALARIO = 'SALARIO'
     FREELANCE = 'FREELANCE'
     REEMBOLSO = 'REEMBOLSO'
-    INVESTIMENTOS = 'INVESTIMENTOS'
     VENDA = 'VENDA'
     BONUS = 'BONUS'
     
-    #Ambos os tipos
+    #Ambos os tipos (despesas e receitas)
     PRESENTE = 'PRESENTE'
     OUTROS = 'OUTROS'
 
@@ -71,5 +71,24 @@ class Transacao(Base):
     usuario = relationship("Usuario", back_populates="transacoes")
 
 
-   
+class PosicaoInvestimento(Base):
+    __tablename__ = "posicoes_investimentos"
 
+    id = Column(Integer, primary_key=True, index=True)
+
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+
+    ticker = Column(String, nullable=False)               
+
+    valor_investido_brl = Column(Float, nullable=False)     
+
+    quantidade_ativos = Column(Float, nullable=False)       
+
+    cotacao_compra = Column(Float, nullable=False)          
+
+    data_compra = Column(DateTime, server_default=func.now())
+
+    usuario = relationship("Usuario", back_populates="investimentos")
+
+
+   

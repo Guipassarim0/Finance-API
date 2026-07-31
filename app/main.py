@@ -25,6 +25,8 @@ app = FastAPI()
 
 from app.routers.auth_routes import auth_router
 from app.routers.transacao_routes import transacao_router
+from app.routers.investimento_routes import investimento_router
 
 app.include_router(auth_router)
 app.include_router(transacao_router)
+app.include_router(investimento_router)

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field, model_validator, field_validator
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from app.models import TipoTransacao, Categoria 
 
@@ -23,7 +23,6 @@ CATEGORIAS_POR_TIPO = {
         Categoria.SALARIO,
         Categoria.FREELANCE,
         Categoria.REEMBOLSO,
-        Categoria.INVESTIMENTOS,
         Categoria.VENDA,
         Categoria.BONUS,
         Categoria.PRESENTE,  # Pode ser receita
@@ -75,3 +74,38 @@ class TransacaoSchema(BaseModel):
 class FiltroRelatorioSchema(TransacaoSchema):
 
     valor: Decimal | None = None
+
+class InvestimentoCreateSchema(BaseModel):
+    ticker: str = Field(..., example="USD", description="Ticker do ativo (ex: USD, EUR, PETR4)")
+    valor_investido: float = Field(..., gt=0, example=1500.0, description="Valor em R$ a ser investido")
+
+class InvestimentoResponseSchema(BaseModel):
+    id: int
+    ticker: str
+    valor_investido_brl: float
+    quantidade_ativos: float
+    cotacao_compra: float
+
+    @field_validator("valor_investido_brl", "quantidade_ativos", "cotacao_compra", mode="after")
+    @classmethod
+    def arredondar_floats(cls, v: float) -> float:
+        if v is not None:
+            return round(v, 2)
+        return v
+
+    class Config:
+        from_attributes = True
+
+
+class AtivoConsolidadoSchema(BaseModel):
+    ticker: str
+    total_investido_brl: float
+    total_quantidade: float
+    cotacao_atual: float
+    valor_atual_brl: float
+    lucro_prejuizo_brl: float
+
+class ResumoCarteiraSchema(BaseModel):
+    patrimonio_total_atual_brl: float
+    total_investido_historico_brl: float
+    ativos_agrupados: List[AtivoConsolidadoSchema]

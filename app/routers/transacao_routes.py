@@ -17,7 +17,7 @@ async def criar_transacao(dados_transacao: TransacaoSchema, current_user: Usuari
     data_envio = dados_transacao.data or agora
 
     '''
-    foi usado o (tzinfo=None) para tratar o conflito de fuso horarios gerado pelo datetime.now(), 
+    Foi usado o (tzinfo=None) para tratar o conflito de fuso horarios gerado pelo datetime.now(), 
     pois ao comparar um objeto de data aware com um naive o python gera um erro fatal, e o .replace(tzinfo=None)
     faz com que ambas as datas fiquem na mesma "prateleira" para a comparação
     '''
@@ -138,7 +138,7 @@ async def resumo_tipos_mensal(mes : int | None = None, ano: int | None = None, c
                                                                                    func.extract('month', Transacao.data) == mes_busca).group_by(Transacao.tipo).all()
     
     #func.sum() soma todos os valores do banco de dados, func.extract filtra apenas a data digitada e o .group_by separa os tipos em duas pastas (receitas e despesas) para separas os valores
-    #usei year e month pois o postegres so entende assim, não entende (ano, mes)
+    #Usei year e month pois o postegres so entende assim, não entende (ano, mes)
 
     resumo = {
         "RECEITA": 0.0,
@@ -151,9 +151,8 @@ async def resumo_tipos_mensal(mes : int | None = None, ano: int | None = None, c
     for tipo, total in resumos_tipos:
 
         '''
-        esse for percorre os resultados do banco onde ele devolve ja ordenado ex(transação.receita == 1500), e abaixo ocorrem as somas de saldo e dos tipos 
+        Esse for percorre os resultados do banco onde ele devolve ja ordenado ex(transação.receita == 1500), e abaixo ocorrem as somas de saldo e dos tipos 
         com o round para limitar o resultado em 2 casas decimais
-
         '''
 
         resumo[tipo.value] = round(total, 2)
@@ -175,7 +174,7 @@ async def resumo_categorias_mensal(mes : int | None = None, ano : int | None = N
             detail= "O mês deve ser um número entre 1 e 12."
         )
     '''
-    validações de ano e mes não permite que o mes seja menor ou igual a 0, 
+    Validações de ano e mes não permite que o mes seja menor ou igual a 0, 
     e que o ano seja maior que o atual ou menor que o ano passado
     '''
     if ano_busca > hoje.year or ano_busca < hoje.year -1:
@@ -185,11 +184,11 @@ async def resumo_categorias_mensal(mes : int | None = None, ano : int | None = N
         )
 
     '''
-    -validação da data mesmaque a rota de cima o usuario escolhe a data a ser consultada
-    -o filtro server para nao deixar que o usuario coloque algo incoerente como (mercado) no tipo de (receita)
-    -nao uso o .group_by nessa rota pois o filtro ja separa os tipos e retorna a soma do mes inteiro da categoria desejada
-    -o depends() vazio do filtro diz para o fastapi para que ele pegue todos os parametros passados na url
-    -o scalar() faz com que o resultado deixe de ser uma lista do banco e devolve o resultado como um numero puro para o pyhton sendo em decimal ou float
+    -Validação da data mesmaque a rota de cima o usuario escolhe a data a ser consultada
+    -O filtro server para nao deixar que o usuario coloque algo incoerente como (mercado) no tipo de (receita)
+    -Não uso o .group_by nessa rota pois o filtro ja separa os tipos e retorna a soma do mes inteiro da categoria desejada
+    -O depends() vazio do filtro diz para o fastapi para que ele pegue todos os parametros passados na url
+    -O scalar() faz com que o resultado deixe de ser uma lista do banco e devolve o resultado como um numero puro para o pyhton sendo em decimal ou float
 
     '''
 
@@ -199,7 +198,7 @@ async def resumo_categorias_mensal(mes : int | None = None, ano : int | None = N
                                                                         func.extract('year', Transacao.data) == ano_busca, 
                                                                         func.extract('month', Transacao.data) == mes_busca).scalar()
     
-    #usei year e month pois o postegres so entende assim, não entende (ano, mes)
+    # Usei year e month pois o postegres so entende assim, não entende (ano, mes)
      
     return {
         "categoria": filtros.categoria.value,

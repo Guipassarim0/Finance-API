@@ -5,13 +5,14 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.models import Usuario
 from app.schemas import  UsuarioSchema, Token
-from app.dependencies import pegar_sessao
+from app.dependencies import pegar_sessao, get_current_user
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from jwt import encode
 
 auth_router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
+# Essa é a rota de criar conta 
 @auth_router.post("/criar_conta")
 async def criar_conta(usuarioSchema: UsuarioSchema, session: Session = Depends(pegar_sessao)):
    usuario = session.query(Usuario).filter(Usuario.email==usuarioSchema.email).first()
@@ -50,6 +51,7 @@ def create_access_token(data: dict):
 
     return encoded_jwt
 
+# Essa é a rota de login
 @auth_router.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(pegar_sessao)):
 
@@ -61,10 +63,17 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Sessi
             detail="Email ou Senha Incorreto")
 
      access_token = create_access_token(
-         {"sub": usuario.email}
+         {"sub": usuario.email,
+          "nome": usuario.nome}
      )
 
      return {
          "access_token": access_token,
-          "token_type": "Bearer"}
-
+         "token_type": "Bearer"}
+    
+@auth_router.get("/me")
+def get_me(usuario: Usuario = Depends(get_current_user)):
+    return {
+        "nome": usuario.nome,
+        "email": usuario.email
+    }
