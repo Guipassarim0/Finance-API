@@ -75,10 +75,6 @@ class FiltroRelatorioSchema(TransacaoSchema):
 
     valor: Decimal | None = None
 
-class InvestimentoCreateSchema(BaseModel):
-    ticker: str = Field(..., example="USD", description="Ticker do ativo (ex: USD, EUR, PETR4)")
-    valor_investido: float = Field(..., gt=0, example=1500.0, description="Valor em R$ a ser investido")
-
 class InvestimentoResponseSchema(BaseModel):
     id: int
     ticker: str
@@ -109,3 +105,7 @@ class ResumoCarteiraSchema(BaseModel):
     patrimonio_total_atual_brl: float
     total_investido_historico_brl: float
     ativos_agrupados: List[AtivoConsolidadoSchema]
+
+class MovimentarInvestimentoSchema(BaseModel):
+    ticker: str = Field(..., example="USD", description="Ticker do ativo")
+    valor_brl: float = Field(..., gt=0, example=500.0, description="Valor em R$ a ser adicionado ou retirado")
